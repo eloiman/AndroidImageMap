@@ -58,6 +58,8 @@ To associate the map with the img, list the map in in ImageMap attributes
 The area map is specified in your project at res/xml/map.xml
 One difference over HTML maps is that each area must have an id. I went back and forth on this requirement, and I may change the code to allow for areas without id. The code will use the name attribute if present, otherwise it will look for title or alt.
 
+The new area "region" is an area extracted from a base image by selecting the regions of the specified color. So the "region" area's coords are "baseimage,color". The "baseimage" is a drawable in the package resources. The "color" format is ARGB in hex (opaque black is FF000000).
+
 <!--?xml version="1.0" encoding="utf-8"?-->
 <maps xmlns:android="http://schemas.android.com/apk/res/android">
     <map name="gridmap">
@@ -67,6 +69,7 @@ One difference over HTML maps is that each area must have an id. I went back and
         <area id="@+id/area1005" shape="circle" coords="574,214,74" />
         <area id="@+id/area1006" shape="poly" coords="250,780,250,951,405,951" />
         <area id="@+id/area1007" shape="poly" coords="592,502,592,730,808,730,808,502,709,502,709,603,690,603,690,502" />
+        <area id="@+id/area1008" shape="region" coords="baseimage,FF00FF00" />
     </map>
     <map name="usamap">
         <area id="@+id/area1" shape="poly" coords="230,35,294,38,299,57,299,79,228,79" />
