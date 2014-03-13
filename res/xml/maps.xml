@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <maps xmlns:android="http://schemas.android.com/apk/res/android">
     <map name="gridmap">
+        <area name="black region" shape="region" coords="gridmap,FF000000" id="@+id/area1100"/>
+        <area name="red region" shape="region" coords="gridmap,FFF33232" id="@+id/area1200"/>
+        <area name="blue region" shape="region" coords="gridmap,FF0000FF" id="@+id/area1300"/>
+        <area name="green region" shape="region" coords="gridmap,FF00FF00" id="@+id/area1400"/>
         <area name="one" shape="rect" coords="118,124,219,226" id="@+id/area1001"/>
         <area name="two" shape="rect" coords="474,374,574,476" id="@+id/area1002"/>        
         <area name="four" shape="rect" coords="710,878,808,980" id="@+id/area1004"/>
-        <area name="red" shape="circle" coords="574,214,74" id="@+id/area1005"/>
-        <area name="blue" shape="poly" coords="250,780,250,951,405,951" id="@+id/area1006"/>
-        <area name="green" shape="poly" coords="592,502,592,730,808,730,808,502,709,502,709,603,690,603,690,502" id="@+id/area1007"/>
     </map>
     <map name="usamap">
 		<area shape="poly" coords="230,35,294,38,299,57,299,79,228,79" id="@+id/area1" name = "N. Dakota"/>

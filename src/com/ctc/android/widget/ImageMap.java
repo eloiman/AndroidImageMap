@@ -23,12 +23,14 @@ import android.content.res.XmlResourceParser;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.SparseArray;
@@ -41,10 +43,15 @@ import android.widget.Scroller;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Map;
 
 public class ImageMap extends ImageView
 {
@@ -325,6 +332,10 @@ public class ImageMap extends ImageView
 			{
 				a = new PolyArea(_id,name, coords);
 			}
+			if (shape.equalsIgnoreCase("region"))
+			{
+				a = new RegionArea(_id, name, coords);
+			}
 			if (a != null)
 			{
 				addArea(a);
@@ -461,8 +472,9 @@ public class ImageMap extends ImageView
 	public void setImageResource(int resId)
 	{
 		final String imageKey = String.valueOf(resId);
-		BitmapHelper bitmapHelper = BitmapHelper.getInstance();
-		Bitmap bitmap = bitmapHelper.getBitmapFromMemCache(imageKey);
+		//BitmapHelper bitmapHelper = BitmapHelper.getInstance();
+		//Bitmap bitmap = bitmapHelper.getBitmapFromMemCache(imageKey);
+		Bitmap bitmap = null;
 
 		// 1 is the default setting, powers of 2 used to decrease image quality (and memory consumption)
 		// TODO: enable variable inSampleSize for low-memory devices
@@ -472,7 +484,7 @@ public class ImageMap extends ImageView
 		if (bitmap == null)
 		{
 			bitmap = BitmapFactory.decodeResource(getResources(), resId, options);
-			bitmapHelper.addBitmapToMemoryCache(imageKey, bitmap);
+			//bitmapHelper.addBitmapToMemoryCache(imageKey, bitmap);
 		}
 		setImageBitmap(bitmap);
 	}
@@ -1587,6 +1599,150 @@ public class ImageMap extends ImageView
 		}
 	}
 
+	/**
+	 * Region area
+	 */
+	class RegionArea extends Area {
+		private class XRegion {
+			int _x;
+			int _len;
+			
+			XRegion(int x, int len) {
+				_x = x;
+				_len = len; 
+			}
+			
+			boolean includes(float x) {
+				return (x > _x && x < (_x + _len));				
+			}
+		}
+		Multimap<Integer, XRegion> _regions = HashMultimap.create();
+
+		// centroid point
+		float _x;
+		float _y;
+
+		public RegionArea(int id, String name, String coords) {
+			super(id,name);
+
+			String[] v = coords.split(",");
+
+			if (v.length != 2) {
+				throw new IllegalArgumentException("regionarea : wrong coords format");
+			}
+
+			int imageResId = getContext().getResources().getIdentifier(
+					v[0], "drawable", getContext().getPackageName());
+			if (imageResId == 0) {
+				throw new IllegalArgumentException("regionarea : wrong image resource id");
+			}
+			
+			Long baseColor0 = Long.parseLong(v[1], 16);
+			int baseColor = Color.argb(
+					(int) (baseColor0 >> 24) & 0xFF, 
+					(int) (baseColor0 >> 16) & 0xFF, 
+					(int) (baseColor0 >> 8) & 0xFF, 
+					(int) (baseColor0 & 0xFF) );
+
+			Bitmap regionBmp = 
+					BitmapFactory.decodeResource(getContext().getResources(), imageResId);
+			int regionWidth = regionBmp.getWidth();
+			int regionHeight = regionBmp.getHeight();
+			int regionArea = regionWidth * regionHeight;
+			int[] pixels = new int[regionArea];
+			regionBmp.getPixels(pixels, 0, regionWidth, 0, 0, regionWidth, regionHeight);
+			
+			final int invalid_value = -1;
+			for (int y = 0; y < regionHeight; y++) {
+				int prevColor = invalid_value;
+				int xBegin = invalid_value;
+				int y0 = y * regionWidth;
+				for (int x = 0; x < regionWidth; x++) {
+					int idx = y0 + x;
+					int c = pixels[idx];
+					if (c != prevColor) {
+						if (prevColor == baseColor) {
+							if (xBegin != invalid_value) {
+								_regions.put(
+										Integer.valueOf(y), 
+										new XRegion(xBegin, x - xBegin));
+							}
+							xBegin = invalid_value;
+						} else if (c == baseColor) {
+							xBegin = x;
+						}
+					}
+					prevColor = c;
+				}
+				if (xBegin != invalid_value) {
+					_regions.put(
+							Integer.valueOf(y), 
+							new XRegion(xBegin, regionWidth - xBegin));
+					xBegin = invalid_value;
+				}
+			}
+			
+			computeCentroid();
+		}
+
+		// return area
+		public double area() {
+			long sum = 0;
+			
+			for (Map.Entry<Integer, XRegion> e : _regions.entries()) {
+				double l = e.getValue()._len;
+				sum += l;
+			}
+			return Math.abs(sum);
+		}
+
+		// compute the centroid
+		public void computeCentroid() {
+			double cx = 0.0, cy = 0.0;
+			long cnt = 0;
+			
+			for (Map.Entry<Integer, XRegion> e : _regions.entries()) {
+				double y = e.getKey();
+				double x = e.getValue()._x;
+				double l = e.getValue()._len;
+				cy += y * l;
+				cx += (x + (x + l - 1)) * l / 2.;
+				cnt += l;
+			}
+			cx /= (float) cnt;
+			cy /= (float) cnt;
+			_x=Math.abs((int)cx);
+			_y=Math.abs((int)cy);
+		}
+
+
+		@Override
+		public float getOriginX() {
+			return _x;
+		}
+
+		@Override
+		public float getOriginY() {
+			return _y;
+		}
+
+		@Override
+		public boolean isInArea(float testx, float testy)
+		{
+			boolean c = false;
+			
+			Collection<XRegion> xregions = _regions.get(Integer.valueOf((int) testy));
+			for (XRegion xreg : xregions) {
+				if (xreg.includes(testx)) {
+					c = true;
+					break;
+				}
+			}
+			
+			return c;
+		}
+	}
+	
 	/**
 	 * information bubble class
 	 */
