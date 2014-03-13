@@ -38,7 +38,6 @@ import android.view.ViewConfiguration;
 import android.widget.ImageView;
 import android.widget.Scroller;
 
-import org.jetbrains.annotations.NotNull;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -73,6 +72,7 @@ public class ImageMap extends ImageView
 	// by default, this is 1.5f
 	private static final float defaultMaxSize = 1.5f;
 	private float mMaxSize = 1.5f;
+	private boolean mNoDpi = false;
 
 	/* Touch event handling variables */
 	private VelocityTracker mVelocityTracker;
@@ -190,6 +190,7 @@ public class ImageMap extends ImageView
 		this.mFitImageToScreen = a.getBoolean(R.styleable.ImageMap_fitImageToScreen, true);
 		this.mScaleFromOriginal = a.getBoolean(R.styleable.ImageMap_scaleFromOriginal, false);
 		this.mMaxSize = a.getFloat(R.styleable.ImageMap_maxSizeFactor, defaultMaxSize);
+		this.mNoDpi = a.getBoolean(R.styleable.ImageMap_nodpi, false);
 
 		this.mapName = a.getString(R.styleable.ImageMap_map);
 		if (mapName != null)
@@ -422,7 +423,8 @@ public class ImageMap extends ImageView
 		mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
 
 		//find out the screen density
-		densityFactor = getResources().getDisplayMetrics().density;
+		densityFactor = 
+				!mNoDpi ? 1.f : getResources().getDisplayMetrics().density;
 	}
 
 	/*
@@ -795,7 +797,7 @@ public class ImageMap extends ImageView
 	 *   This handler manages an arbitrary number of points
 	 *   and detects taps, moves, flings, and zooms
 	 */
-	public boolean onTouchEvent(@NotNull MotionEvent ev)
+	public boolean onTouchEvent(MotionEvent ev)
 	{
 		int id;
 
@@ -1755,5 +1757,10 @@ public class ImageMap extends ImageView
 	public boolean ismFitImageToScreen()
 	{
 		return mFitImageToScreen;
+	}
+	
+	public boolean ismNoDpi()
+	{
+		return mNoDpi;
 	}
 }

@@ -13,6 +13,7 @@
     	ctc:map="usamap"
         ctc:maxSizeFactor="1.5"
         ctc:scaleFromOriginal="true"
-        ctc:fitImageToScreen="true"/>
+        ctc:fitImageToScreen="true"
+        ctc:nodpi="false"/>
 
 </LinearLayout>
