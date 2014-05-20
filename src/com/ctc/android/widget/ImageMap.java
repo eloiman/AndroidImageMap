@@ -17,6 +17,7 @@
 
 package com.ctc.android.widget;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
@@ -33,6 +34,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -53,15 +55,23 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+@SuppressLint("WrongCall")
 public class ImageMap extends ImageView
 {
-	// mFitImageToScreen
-	// if true - initial image resized to fit the screen, aspect ratio may be broken
-	// if false- initial image resized so that no empty screen is visible, aspect ratio maintained
-	//           image size will likely be larger than screen
-
-	// by default, this is true
-	private boolean mFitImageToScreen=true;
+	public enum FIT_IMAGE_TO_SCREEN {
+		FIT_TO_SCREEN(0), FIT_TO_SCREEN_WITH_ASPECT(1), RAW_SIZE(2);
+		private int code;
+		 
+		private FIT_IMAGE_TO_SCREEN(int c) {
+			code = c;
+		}
+		 
+		public int getCode() {
+			return code;
+		}
+	};
+	
+	private FIT_IMAGE_TO_SCREEN mFitImageToScreen=FIT_IMAGE_TO_SCREEN.FIT_TO_SCREEN;
 
 	// For certain images, it is best to always resize using the original
 	// image bits. This requires keeping the original image in memory along with the
@@ -194,7 +204,7 @@ public class ImageMap extends ImageView
 	{
 		TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.ImageMap);
 
-		this.mFitImageToScreen = a.getBoolean(R.styleable.ImageMap_fitImageToScreen, true);
+		this.mFitImageToScreen = FIT_IMAGE_TO_SCREEN.values()[a.getInteger(R.styleable.ImageMap_fitImageToScreen, 0)];
 		this.mScaleFromOriginal = a.getBoolean(R.styleable.ImageMap_scaleFromOriginal, false);
 		this.mMaxSize = a.getFloat(R.styleable.ImageMap_maxSizeFactor, defaultMaxSize);
 		this.mNoDpi = a.getBoolean(R.styleable.ImageMap_nodpi, false);
@@ -480,6 +490,7 @@ public class ImageMap extends ImageView
 		// TODO: enable variable inSampleSize for low-memory devices
 		options = new BitmapFactory.Options();
 		options.inSampleSize = 1;
+		options.inScaled = false;
 
 		if (bitmap == null)
 		{
@@ -583,13 +594,16 @@ public class ImageMap extends ImageView
 	 */
 	void setInitialImageBounds()
 	{
-		if (mFitImageToScreen)
-		{
-			setInitialImageBoundsFitImage();
-		}
-		else
-		{
+		switch (mFitImageToScreen) {
+		default:
 			setInitialImageBoundsFillScreen();
+			break;
+		case FIT_TO_SCREEN:
+			setInitialImageBoundsFitImage();
+			break;
+		case FIT_TO_SCREEN_WITH_ASPECT:
+			setInitialImageBoundsFitImageWithAspect();
+			break;
 		}
 	}
 
@@ -610,6 +624,32 @@ public class ImageMap extends ImageView
 
 				mScrollTop = 0;
 				mScrollLeft = 0;
+				scaleBitmap(mMinWidth, mMinHeight);
+			}
+		}
+	}
+
+	void setInitialImageBoundsFitImageWithAspect() 
+	{
+		if (mImage != null)
+		{
+			if (mViewWidth > 0)
+			{
+				mScrollTop = 0;
+				mScrollLeft = 0;
+
+				if (mViewHeight > mViewWidth) {
+					mMinHeight = mViewHeight;
+					mMinWidth = (int)(mMinHeight / mAspect);
+					mScrollLeft = (mViewWidth - mMinWidth) / 2;
+				} else {
+					mMinWidth = mViewWidth;
+					mMinHeight = (int)(mMinWidth / mAspect);
+					mScrollTop = (mViewHeight - mMinHeight) / 2;
+				}
+				mMaxWidth = (int)(mMinWidth * mMaxSize);
+				mMaxHeight = (int)(mMinHeight * mMaxSize);
+
 				scaleBitmap(mMinWidth, mMinHeight);
 			}
 		}
@@ -1645,7 +1685,7 @@ public class ImageMap extends ImageView
 					(int) (baseColor0 & 0xFF) );
 
 			Bitmap regionBmp = 
-					BitmapFactory.decodeResource(getContext().getResources(), imageResId);
+					BitmapFactory.decodeResource(getContext().getResources(), imageResId, options);
 			int regionWidth = regionBmp.getWidth();
 			int regionHeight = regionBmp.getHeight();
 			int regionArea = regionWidth * regionHeight;
@@ -1660,6 +1700,11 @@ public class ImageMap extends ImageView
 				for (int x = 0; x < regionWidth; x++) {
 					int idx = y0 + x;
 					int c = pixels[idx];
+					
+					if (c == baseColor) {
+						Log.i("image_map", "base color " + x + "; " + y);
+					}
+					
 					if (c != prevColor) {
 						if (prevColor == baseColor) {
 							if (xBegin != invalid_value) {
@@ -1910,7 +1955,7 @@ public class ImageMap extends ImageView
 		return mScaleFromOriginal;
 	}
 
-	public boolean ismFitImageToScreen()
+	public FIT_IMAGE_TO_SCREEN ismFitImageToScreen()
 	{
 		return mFitImageToScreen;
 	}

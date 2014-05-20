@@ -13,7 +13,7 @@
     	ctc:map="gridmap"
         ctc:maxSizeFactor="1.5"
         ctc:scaleFromOriginal="true"
-        ctc:fitImageToScreen="true"
+        ctc:fitImageToScreen="fitToScreenWithAspect"
         ctc:nodpi="false"/>
 
 </LinearLayout>
